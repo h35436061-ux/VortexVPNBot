@@ -1,0 +1,55 @@
+import os
+import requests
+
+TOKEN = os.environ.get("BOT_TOKEN")
+
+if not TOKEN:
+    raise RuntimeError("Не задан BOT_TOKEN")
+
+API = f"https://api.telegram.org/bot{TOKEN}"
+
+def main():
+    offset = None
+    print("Vortex VPN Bot запущен!")
+
+    while True:
+        response = requests.get(
+            f"{API}/getUpdates",
+            params={"offset": offset, "timeout": 30},
+            timeout=35,
+        )
+        response.raise_for_status()
+
+        for update in response.json().get("result", []):
+            offset = update["update_id"] + 1
+            message = update.get("message", {})
+            chat = message.get("chat", {})
+            text = message.get("text", "")
+
+            if not chat or not text:
+                continue
+
+            if text.startswith("/start"):
+                reply = (
+                    "Добро пожаловать в Vortex VPN!\n"
+                    "Команда /vpn — VPN-доступ\n"
+                    "Команда /help — помощь"
+                )
+            elif text.startswith("/vpn"):
+                reply = (
+                    "VPN-сервер пока не подключён. "
+                    "Сначала нужно настроить сервер."
+                )
+            elif text.startswith("/help"):
+                reply = "Доступные команды: /start, /vpn, /help"
+            else:
+                reply = "Напиши /start, чтобы открыть меню."
+
+            requests.post(
+                f"{API}/sendMessage",
+                json={"chat_id": chat["id"], "text": reply},
+                timeout=15,
+            ).raise_for_status()
+
+if __name__ == "__main__":
+    main()
